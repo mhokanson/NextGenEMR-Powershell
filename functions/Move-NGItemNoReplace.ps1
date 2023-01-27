@@ -43,17 +43,17 @@ function move-itemNoReplace
 	while ((Test-Path $destinationFullPath) -eq $true)
 	{
 
-	    $destinationFileBaseName = $sourceFileBaseName + " ($i)"
-	    $destinationFullPath = Join-Path -Path $destinationFolder -ChildPath ($destinationFileBaseName + $sourceFileExtension)
+		$destinationFileBaseName = $sourceFileBaseName + " ($i)"
+		$destinationFullPath = Join-Path -Path $destinationFolder -ChildPath ($destinationFileBaseName + $sourceFileExtension)
 
-	    $i = $i + 1
+		$i = $i + 1
 	}
-    Write-Verbose "Moving $sourceFile to $destinationFullPath"
+	Write-Verbose "Moving $sourceFile to $destinationFullPath"
 	# Perform the move
 	Move-Item -Path $sourceFile -Destination $destinationFullPath
 	if ($?) { # if the last command had an error send a notification
-        return $true
-    } else {
-        return $false
-    }
+		return $true
+	} else {
+		return $false
+	}
 }

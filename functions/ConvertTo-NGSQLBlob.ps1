@@ -10,19 +10,19 @@ ConvertTo-NextGenSQLBlob -Path "C:\Sample.docx"
 #>
 function ConvertTo-NGSQLBlob()
 {
-    Param (
+	Param (
 		[parameter(Mandatory=$true)] [string] $Path
-    )
-    
-    if(Test-Path $Path)
-    {
-      $bitBlob = [System.IO.File]::ReadAllBytes($Path)
+	)
+	
+	if(Test-Path $Path)
+	{
+	  $bitBlob = [System.IO.File]::ReadAllBytes($Path)
 
-      $hexBlob = ([System.BitConverter]::ToString($bitBlob)).replace("-","")
+	  $hexBlob = ([System.BitConverter]::ToString($bitBlob)).replace("-","")
 
-      return "0x$hexBlob"
-    }
-    else {
-      return $null
-    }
+	  return "0x$hexBlob"
+	}
+	else {
+	  return $null
+	}
 }
