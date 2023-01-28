@@ -84,7 +84,7 @@ function Import-NextGenDocument
 		$documentBlob = convertTo-NextGenSQLBlob -Path $currentDocument
 
 
-		if($document -ne $null)
+		if($null -ne $document)
 		{
 			$archiveSQL = " INSERT INTO
 							patient_documents_archive
