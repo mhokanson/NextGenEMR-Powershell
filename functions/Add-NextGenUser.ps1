@@ -43,6 +43,12 @@ function Add-NextGenUser {
 
 	# Support -WhatIf output
 	if ($PSCmdlet.ShouldProcess("$($moduleVars.database)","Creating user: $username")) {
+		if($null -ne $(Get-NextGenUser -identity $username -Identifier "username")){
+			Write-Error "User already exists. Cannot create new user with supplied username."
+			return
+		}
+
+
 		$ngpwdhash = Get-NextGenPwdHash $password
 
 		$user_mstr_insert_query = @"
