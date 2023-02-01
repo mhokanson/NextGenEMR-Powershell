@@ -1,5 +1,5 @@
 function Get-NextGenPwdHash {
-	[cmdletbinding(SupportsShouldProcess)]
+	[cmdletbinding(ValueFromPipeline)]
 	Param(
 		[parameter(Mandatory = $true)] [SecureString]$password
 	)

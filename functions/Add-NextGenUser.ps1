@@ -3,28 +3,37 @@ function Add-NextGenUser {
 		.SYNOPSIS
 			Create a new user account in NextGen EMR.
 			Similar to Add-ADUser from the Active Directory module
-	 
+
 		.PARAMETER username
 			The users username
-	 
+
 		.PARAMETER firstname
 			The given name of the new user
-	 
+
 		.PARAMETER lastname
 			The last/family name of the new user
-	 
+
 		.PARAMETER email
 			The email address of the new user
-	 
+
 		.PARAMETER password
 			The new users initial password in a SecureString
-	 
+
+		.PARAMETER securityGroup
+			An security group as displayed in NextGen System Administrator. Without at least one group the user won't be visible in System Administrator.
+
 		.PARAMETER securityGroups
 			An array of security groups as displayed in NextGen System Administrator. Without at least one group the user won't be visible in System Administrator.
-	 
+
+		.PARAMETER application
+			An application to display on the user's NextGen Application Launcher.
+
+		.PARAMETER applications
+			An array of applications to display on the user's NextGen Application Launcher.
+
 		.PARAMETER userPrefs
 			An array of security groups as displayed in NextGen System Administrator. Without at least one group the user won't be visible in System Administrator.
-	 
+
 		.EXAMPLE
 			Get-NextGenUser -identity "test" returns all users with "test" found in their username, email address, first name, or last name.
 		#>
@@ -35,7 +44,10 @@ function Add-NextGenUser {
 		[parameter(Mandatory = $true)] [string]$lastname,
 		[parameter(Mandatory = $false)] [string]$email = "",
 		[parameter(Mandatory = $true)] [SecureString]$password,
-		[parameter(Mandatory = $true)] [string[]]$securityGroups,
+		[parameter(Mandatory = $false)] [string]$application = $null,
+		[parameter(Mandatory = $false)] [string[]]$applications = $null,
+		[parameter(Mandatory = $false)] [string]$securityGroup = $null,
+		[parameter(Mandatory = $false)] [string[]]$securityGroups = $null,
 		[parameter(Mandatory = $true)] [Object[]]$userPrefs
 	)
 
@@ -45,6 +57,11 @@ function Add-NextGenUser {
 	if ($PSCmdlet.ShouldProcess("$($moduleVars.database)","Creating user: $username")) {
 		if($null -ne $(Get-NextGenUser -identity $username -Identifier "username")){
 			Write-Error "User already exists. Cannot create new user with supplied username."
+			return
+		}
+
+		if(($PSBoundParameters.ContainsKey('securityGroup') -or $PSBoundParameters.ContainsKey('securityGroups')) -eq $false) {
+			Write-Error "Unable to create user without at least one security group membership."
 			return
 		}
 
@@ -135,58 +152,30 @@ function Add-NextGenUser {
 			return
 		}
 
-		foreach($security_group in $securityGroups){
-			$sg_query = @"
-			INSERT INTO user_group_xref
-			(
-				user_id,
-				group_id
-			)
-			SELECT
-				@user_id,
-				group_id
-			FROM security_groups
-			WHERE group_name = @group_desc
-"@
-			$sg_queryObj = @{
-				SqlInstance = $moduleVars.databaseServer
-				Database = $moduleVars.database
-				Query = $sg_query
-				SqlParameter = @{
-					user_id = $newUserObj.user_id
-					group_desc = $security_group
-				}
+		if($PSBoundParameters.ContainsKey('application')) {
+		# if($null -ne $application) {
+			Add-NextGenUserAppLauncherApp -user_id $newUserObj.user_id -application $application -operator_id $moduleVars.operator_id
+		} elseif($PSBoundParameters.ContainsKey('applications')) {
+		# } elseif ($null -ne $applications) {
+			foreach($app in $applications) {
+				Add-NextGenUserAppLauncherApp -user_id $newUserObj.user_id -application $app -operator_id $moduleVars.operator_id
 			}
-
-			Write-Verbose "Adding user $($newUserObj.user_id) ($($newUserObj.last_name + ', ' + $newUserObj.first_name)) to the security group: $security_group"
-
-			Invoke-DbaQuery @sg_queryObj
-		}
-
-		$sg_insert_check_obj = @{
-			SqlInstance = $moduleVars.databaseServer
-			Database = $moduleVars.database
-			Query = @"
-		SELECT *
-		FROM user_group_xref
-		WHERE user_id = @user_id
-"@
-		SqlParameter = @{
-			user_id = $newUserObj.user_id
-		}
-	}
-
-		$sq_check_results = Invoke-DbaQuery @sg_insert_check_obj
-
-		if($null -eq $sq_check_results) {
-			Write-Error "Failed to put user $($newUserObj.user_id) ($($newUserObj.last_name + ', ' + $newUserObj.first_name)) in any security groups"
-			return
+		} else {
+			Write-Warning "The new user will have no applications on their NextGen Application Launcher"
 		}
 
 
 
-
-
+		
+		if($PSBoundParameters.ContainsKey('securityGroup')) {
+			Write-Verbose "Adding user to security group '$securityGroup'"
+			Add-NextGenUserToSecurityGroup -user_id $newUserObj.user_id -security_group $securityGroup -operator_id $moduleVars.operator_id
+		} else {
+			foreach($group in $securityGroups) {
+				Write-Verbose "Adding user to security group '$group'"
+				Add-NextGenUserToSecurityGroup -user_id $newUserObj.user_id -security_group $group -operator_id $moduleVars.operator_id
+			}
+		}
 
 
 
