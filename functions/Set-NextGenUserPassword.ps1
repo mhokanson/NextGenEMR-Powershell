@@ -12,8 +12,10 @@ function Set-NextGenUserPassword {
 		#>
 	[cmdletbinding(SupportsShouldProcess)]
 	Param(
-		[parameter(Mandatory = $true, ValueFromPipelineByPropertyName)] [string]$username,
-		[parameter(Mandatory = $true, ValueFromPipelineByPropertyName)] [SecureString]$password
+		[parameter(Mandatory = $true, ValueFromPipelineByPropertyName = $true)] [string]$username,
+		[parameter(Mandatory = $true, ValueFromPipelineByPropertyName = $true)] [SecureString]$password,
+		[parameter(Mandatory = $false)] [switch]$noPasswordChangeRequired = $false
+
 	)
 
 	$moduleVars = Get-NextGenVariables
@@ -22,6 +24,13 @@ function Set-NextGenUserPassword {
 	if ($PSCmdlet.ShouldProcess("$($moduleVars.database)","Set password for $username")) {
 		$passwordHash = Get-NextGenPwdHash -Password $password
 
+		if($noPasswordChangeRequired -eq $true){
+			$force_new_pwd_ind = "N"
+		} else {
+			$force_new_pwd_ind = "Y"
+		}
+
+
 		$setPasswordQueryObj = @{
 			SqlInstance = $moduleVars.databaseServer
 			Database = $moduleVars.database
@@ -29,7 +38,7 @@ function Set-NextGenUserPassword {
 	UPDATE user_mstr
 	SET 
 		password = @passwordHash,
-		force_new_pwd_ind = 'Y',
+		force_new_pwd_ind = '$force_new_pwd_ind',
 		modified_by = @operator_id,
 		modify_timestamp = GETDATE()
 	WHERE login_id = @username
