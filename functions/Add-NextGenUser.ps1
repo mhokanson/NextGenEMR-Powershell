@@ -55,7 +55,7 @@ function Add-NextGenUser {
 
 	# Support -WhatIf output
 	if ($PSCmdlet.ShouldProcess("$($moduleVars.database)","Creating user: $username")) {
-		if($null -ne $(Get-NextGenUser -identity $username -Identifier "username")){
+		if($null -ne $(Get-NextGenUser -identity $username -Identifier "username" -exact)){
 			Write-Error "User already exists. Cannot create new user with supplied username."
 			return
 		}
@@ -177,45 +177,51 @@ function Add-NextGenUser {
 			}
 		}
 
-
-
+		# TODO: Figure out why looping through multiple accounts causes these lines to error out without -Force
 		foreach($pref in $userPrefs){
-			$user_pref_query = @"
-			INSERT INTO user_pref
-			(
-				enterprise_id,
-				practice_id,
-				user_id,
-				item_name,
-				item_value,
-				created_by,
-				modified_by
-			)
-			SELECT
-				@enterprise_id,
-				@practice_id,
-				@user_id,
-				@item_name,
-				@item_value,
-				@operator_id,
-				@operator_id
-"@
-			$queryObj = @{
-				SqlInstance = $moduleVars.databaseServer
-				Database = $moduleVars.database
-				Query = $user_pref_query
-				SqlParameter = @{
-					enterprise_id = $pref.enterprise_id
-					practice_id = $pref.practice_id
-					user_id = $newUserObj.user_id
-					item_name = $pref.item_name
-					item_value = $pref.item_value
-					operator_id = $moduleVars.operator_id
-				}
-			}
-
-			Write-Verbose "Adding user_pref '$($pref.item_name)' with value '$($pref.item_value)' for $($newUserObj.user_id) ($($newUserObj.last_name + ', ' + $newUserObj.first_name))"
-			Invoke-DbaQuery @queryObj
+			$pref | Add-Member -NotePropertyName user_id -NotePropertyValue $newUserObj.user_id -Force
+			$pref | Add-Member -NotePropertyName created_by -NotePropertyValue $moduleVars.operator_id -Force
+			$pref | Add-Member -NotePropertyName modified_by -NotePropertyValue $moduleVars.operator_id -Force
 		}
+
+		$userPrefs | Write-DbaDbTableData -SqlInstance $moduleVars.databaseServer -Database $moduleVars.database -Table "user_pref"
+# 		foreach($pref in $userPrefs){
+# 			$user_pref_query = @"
+# 			INSERT INTO user_pref
+# 			(
+# 				enterprise_id,
+# 				practice_id,
+# 				user_id,
+# 				item_name,
+# 				item_value,
+# 				created_by,
+# 				modified_by
+# 			)
+# 			SELECT
+# 				@enterprise_id,
+# 				@practice_id,
+# 				@user_id,
+# 				@item_name,
+# 				@item_value,
+# 				@operator_id,
+# 				@operator_id
+# "@
+# 			$queryObj = @{
+# 				SqlInstance = $moduleVars.databaseServer
+# 				Database = $moduleVars.database
+# 				Query = $user_pref_query
+# 				SqlParameter = @{
+# 					enterprise_id = $pref.enterprise_id
+# 					practice_id = $pref.practice_id
+# 					user_id = $newUserObj.user_id
+# 					item_name = $pref.item_name
+# 					item_value = $pref.item_value
+# 					operator_id = $moduleVars.operator_id
+# 				}
+# 			}
+
+# 			Write-Verbose "Adding user_pref '$($pref.item_name)' with value '$($pref.item_value)' for $($newUserObj.user_id) ($($newUserObj.last_name + ', ' + $newUserObj.first_name))"
+# 			Invoke-DbaQuery @queryObj
+# 		}
 	}
 }
