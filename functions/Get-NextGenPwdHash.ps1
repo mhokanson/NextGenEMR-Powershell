@@ -1,7 +1,7 @@
 function Get-NextGenPwdHash {
-	[cmdletbinding(ValueFromPipeline)]
+	[cmdletbinding()]
 	Param(
-		[parameter(Mandatory = $true)] [SecureString]$password
+		[parameter(Mandatory = $true, ValueFromPipeline = $true)] [SecureString]$password
 	)
 
 	$insecure_password = [Net.NetworkCredential]::new('', $password).Password
