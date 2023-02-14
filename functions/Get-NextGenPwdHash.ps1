@@ -1,8 +1,10 @@
 function Get-NextGenPwdHash {
 	[cmdletbinding()]
 	Param(
+		[parameter(Mandatory = $true, ValueFromPipeline = $true)] [string]$username,
 		[parameter(Mandatory = $true, ValueFromPipeline = $true)] [SecureString]$password
 	)
+	$moduleVars = Get-NextGenVariables
 
 	$insecure_password = [Net.NetworkCredential]::new('', $password).Password
 	$salted_string = $username.ToLower() + $moduleVars.passwordSalt + $insecure_password
@@ -12,16 +14,21 @@ function Get-NextGenPwdHash {
 	$hashString = $(Get-FileHash -InputStream $mystream -Algorithm SHA1).Hash
 	
 	$ngpwdhash = ""
-	# NextGen drops leading zeros from each byte of the hashed password
-	for($i = 0; $i -lt $hashString.Length; $i++){
-		$byteValue = $hashString.Substring($i,2)
-		if($byteValue.Substring(0,1) -eq "0"){
-			$ngpwdhash += $byteValue.Substring(1,1)
-		} else {
-			$ngpwdhash += $byteValue
+	# Break the hex string into 2-character hex values
+	$hashArray = $hashString -split '(.{2})' -ne ''
+
+	# Process each hex value
+	foreach ($element in $hashArray) {
+		if ($element -eq "7E") {
+			$ngpwdhash += "0A"
+			# NextGen drops leading zeros from hex values (except the line above)
 		}
-	
-		$i = $i + 1
+		elseif ($element.Substring(0, 1) -eq "0") {
+			$ngpwdhash += $element.Substring(1, 1)
+		}
+		else {
+			$ngpwdhash += $element
+		}
 	}
 
 	return $ngpwdhash
