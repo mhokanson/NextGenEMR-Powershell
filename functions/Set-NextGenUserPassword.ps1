@@ -22,7 +22,7 @@ function Set-NextGenUserPassword {
 
 	# Support -WhatIf output
 	if ($PSCmdlet.ShouldProcess("$($moduleVars.database)","Set password for $username")) {
-		$passwordHash = Get-NextGenPwdHash -Password $password
+		$passwordHash = Get-NextGenPwdHash -username $username -Password $password
 
 		if($noPasswordChangeRequired -eq $true){
 			$force_new_pwd_ind = "N"
