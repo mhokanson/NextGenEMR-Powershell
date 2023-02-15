@@ -23,7 +23,22 @@ if ((Get-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\WindowsPowerShell\NextGenE
 # Import non-powershell components
 [Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
 [System.Reflection.Assembly]::LoadFrom($ModuleRoot + "\components\itextsharp.dll") | Out-Null
-
+$moduleSettings = Join-Path $env:AppData "PowerShell" "NextGenEMR" "settings.json"
+if($(Test-Path $moduleSettings) -eq $false){
+	New-Item -ItemType File -Path $moduleSettings
+	$blankSettings = @"
+{
+	"databaseServer":"",
+	"database":"",
+	"databaseUseTrusted":true,
+	"databaseUsername":"",
+	"databasePassword":"",
+	"operator_id":,
+	"passwordSalt":""
+}
+"@
+	Set-Content -Path $moduleSettings -Value $blankSettings
+}
 
 # Import all public functions
 foreach ($function in (Get-ChildItem "$ModuleRoot\functions\*.ps1"))
