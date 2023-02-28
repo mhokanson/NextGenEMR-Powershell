@@ -151,8 +151,9 @@ function Get-NextGenUser {
 
 		# Set an empty array to ensure an array is returned
 		$userPrefsList = @()
+		Write-Verbose "About to execute lookup of EHR settings for user $($user.username)"
 		$userPrefsResults = Invoke-DbaQuery @user_prefs_queryObj
-		foreach ($pref in $userPRefsResults) {
+		foreach ($pref in $userPrefsResults) {
 			$userPrefsList += [PSCustomObject]@{
 				enterprise_id = $pref.enterprise_id
 				practice_id   = $pref.practice_id
@@ -161,9 +162,39 @@ function Get-NextGenUser {
 			}
 		}
 	
-		Write-Verbose "About to execute lookup of EHR settings for user $($user.username)"
 		$user | Add-Member -NotePropertyName "userPrefs" -NotePropertyValue $userPrefsList
-		# Select-Object should convert the datarow to a PSObject
+		
+
+
+
+
+		$userMRDefaults_queryObj = @{
+			SqlInstance  = $moduleVars.databaseServer
+			Database     = $moduleVars.database
+			Query        = @"
+	SELECT
+		enterprise_id,
+		practice_id,
+		provider_id,
+		location_id,
+		use_last_doc_ind,
+		use_last_loc_ind,
+		table_contents,
+		patient_search_ind,
+		change_case_ind,
+		imply_wildcard_ind
+	FROM mrdefaults
+	WHERE user_id = @user_id
+"@
+			SqlParameter = @{
+				user_id = $user.user_id
+			}
+		}
+
+		
+		$userMRDefaults = Invoke-DbaQuery @userMRDefaults_queryObj -As PSObject
+
+		$user | Add-Member -NotePropertyName "mrdefaults" -NotePropertyValue $userMRDefaults
 	}
-	return $userObj | Select-Object user_id, first_name, last_name, username, email_login_id, delete_ind, last_logon_date, appLauncherApps, securityGroups, userPrefs
+	return $userObj | Select-Object user_id, first_name, last_name, username, email_login_id, delete_ind, last_logon_date, appLauncherApps, securityGroups, userPrefs, mrdefaults
 }

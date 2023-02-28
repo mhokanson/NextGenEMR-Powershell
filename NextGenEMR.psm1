@@ -23,7 +23,7 @@ if ((Get-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\WindowsPowerShell\NextGenE
 # Import non-powershell components
 [Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
 [System.Reflection.Assembly]::LoadFrom($ModuleRoot + "\components\itextsharp.dll") | Out-Null
-$moduleSettings = Join-Path $env:AppData "PowerShell" "NextGenEMR" "settings.json"
+$moduleSettings = Join-Path $env:AppData -childPath "PowerShell\NextGenEMR\settings.json"
 if($(Test-Path $moduleSettings) -eq $false){
 	New-Item -ItemType File -Path $moduleSettings
 	$blankSettings = @"
