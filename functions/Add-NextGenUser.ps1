@@ -48,7 +48,8 @@ function Add-NextGenUser {
 		[parameter(Mandatory = $false)] [string[]]$applications = $null,
 		[parameter(Mandatory = $false)] [string]$securityGroup = $null,
 		[parameter(Mandatory = $false)] [string[]]$securityGroups = $null,
-		[parameter(Mandatory = $true)] [Object[]]$userPrefs
+		[parameter(Mandatory = $true)] [Object[]]$userPrefs,
+		[parameter(Mandatory = $true)] [Object[]]$mrdefaults
 	)
 
 	$moduleVars = Get-NextGenVariables
@@ -66,7 +67,7 @@ function Add-NextGenUser {
 		}
 
 
-		$ngpwdhash = Get-NextGenPwdHash $password
+		# $ngpwdhash = Get-NextGenPwdHash $($password | ConvertFrom-SecureString)
 
 		$user_mstr_insert_query = @"
 		INSERT INTO user_mstr
@@ -102,7 +103,7 @@ function Add-NextGenUser {
 			'00001',
 			'0001',
 			(SELECT MAX(user_id) + 1 FROM user_mstr),
-			@hashed_pwd,
+			null,
 			@last_name,
 			@first_name,
 			'01019999',
@@ -152,6 +153,8 @@ function Add-NextGenUser {
 			return
 		}
 
+		Set-NextGenUserPassword -username $username -password $password
+
 		if($PSBoundParameters.ContainsKey('application')) {
 		# if($null -ne $application) {
 			Add-NextGenUserAppLauncherApp -user_id $newUserObj.user_id -application $application -operator_id $moduleVars.operator_id
@@ -184,7 +187,70 @@ function Add-NextGenUser {
 			$pref | Add-Member -NotePropertyName modified_by -NotePropertyValue $moduleVars.operator_id -Force
 		}
 
+		Write-Verbose "Adding user_pref records"
 		$userPrefs | Write-DbaDbTableData -SqlInstance $moduleVars.databaseServer -Database $moduleVars.database -Table "user_pref"
+		
+		$mrdefault_insert_query = @"
+		INSERT INTO mrdefaults
+		(
+			enterprise_id,
+			practice_id,
+			user_id,
+			provider_id,
+			location_id,
+			use_last_doc_ind,
+			use_last_loc_ind,
+			table_contents,
+			patient_search_ind,
+			change_case_ind,
+			imply_wildcard_ind,
+			created_by,
+			create_timestamp,
+			modified_by,
+			modify_timestamp
+		)
+		VALUES
+		(
+			@enterprise_id,
+			@practice_id,
+			@user_id,
+			@provider_id,
+			@location_id,
+			@use_last_doc_ind,
+			@use_last_loc_ind,
+			@table_contents,
+			@patient_search_ind,
+			@change_case_ind,
+			@imply_wildcard_ind,
+			@operator_id,
+			GETDATE(),
+			@operator_id,
+			GETDATE()
+		)
+"@
+
+		$queryObj = @{
+			SqlInstance = $moduleVars.databaseServer
+			Database = $moduleVars.database
+			Query = $mrdefault_insert_query
+			SqlParameter = @{
+				enterprise_id = $mrdefaults.enterprise_id
+				practice_id = $mrdefaults.practice_id
+				user_id = $newUserObj.user_id
+				provider_id = $mrdefaults.provider_id
+				location_id = $mrdefaults.location_id
+				use_last_doc_ind = $mrdefaults.use_last_doc_ind
+				use_last_loc_ind = $mrdefaults.use_last_loc_ind
+				table_contents = $mrdefaults.table_contents
+				patient_search_ind = $mrdefaults.patient_search_ind
+				change_case_ind = $mrdefaults.change_case_ind
+				imply_wildcard_ind = $mrdefaults.imply_wildcard_ind
+				operator_id = $moduleVars.operator_id
+			}
+		}
+
+		Write-Verbose "Adding mrdefaults record"
+		Invoke-DbaQuery @queryObj
 # 		foreach($pref in $userPrefs){
 # 			$user_pref_query = @"
 # 			INSERT INTO user_pref
